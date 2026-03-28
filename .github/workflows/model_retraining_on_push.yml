@@ -1,0 +1,169 @@
+# =============================================================================
+# GitHub Actions Workflow: Iris Model Training and Evaluation
+# =============================================================================
+#
+# This workflow automatically trains and evaluates the Random Forest model
+# on the Iris dataset whenever code is pushed to the main branch.
+#
+# MODIFICATION FROM ORIGINAL LAB:
+# - Dataset: Using Iris dataset instead of synthetic data
+# - Model: Random Forest classifier for 3-class flower classification
+#
+# Author: Kapish Gupta
+# Course: IE 7374 - MLOps, Northeastern University
+# =============================================================================
+
+name: Iris Model Training and Evaluation
+
+# Workflow triggers
+on:
+  # Trigger on push to main branch
+  push:
+    branches:
+      - main
+  
+  # Allow manual triggering from GitHub UI
+  workflow_dispatch:
+
+jobs:
+  train-and-evaluate:
+    name: Train and Evaluate Iris Model
+    runs-on: ubuntu-latest
+    
+    # Grant permissions to commit changes back to repo
+    permissions:
+      contents: write
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Step 1: Checkout repository
+      # -----------------------------------------------------------------------
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
+      # -----------------------------------------------------------------------
+      # Step 2: Set up Python environment
+      # -----------------------------------------------------------------------
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      # -----------------------------------------------------------------------
+      # Step 3: Install dependencies
+      # -----------------------------------------------------------------------
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          echo "Dependencies installed successfully!"
+      
+      # -----------------------------------------------------------------------
+      # Step 4: Create necessary directories
+      # -----------------------------------------------------------------------
+      - name: 📁 Create Directories
+        run: |
+          mkdir -p models
+          mkdir -p metrics
+          mkdir -p data
+          echo "Directories created!"
+      
+      # -----------------------------------------------------------------------
+      # Step 5: Generate timestamp for versioning
+      # -----------------------------------------------------------------------
+      - name: ⏰ Generate Timestamp
+        id: timestamp
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "Generated timestamp: $TIMESTAMP"
+      
+      # -----------------------------------------------------------------------
+      # Step 6: Train model on Iris dataset
+      # -----------------------------------------------------------------------
+      - name: 🎯 Train Iris Classification Model
+        run: |
+          echo "=============================================="
+          echo "Starting Iris Model Training..."
+          echo "=============================================="
+          python src/train_model.py
+      
+      # -----------------------------------------------------------------------
+      # Step 7: Evaluate trained model
+      # -----------------------------------------------------------------------
+      - name: 📊 Evaluate Model Performance
+        run: |
+          echo "=============================================="
+          echo "Evaluating Model Performance..."
+          echo "=============================================="
+          python src/evaluate_model.py
+      
+      # -----------------------------------------------------------------------
+      # Step 8: Display metrics summary
+      # -----------------------------------------------------------------------
+      - name: 📈 Display Metrics Summary
+        run: |
+          echo "=============================================="
+          echo "TRAINING RUN SUMMARY"
+          echo "=============================================="
+          echo ""
+          echo "Timestamp: ${{ steps.timestamp.outputs.TIMESTAMP }}"
+          echo ""
+          if [ -f metrics/metrics_latest.json ]; then
+            echo "--- Latest Metrics (JSON) ---"
+            cat metrics/metrics_latest.json
+          fi
+          echo ""
+          if [ -f metrics/classification_report.txt ]; then
+            echo "--- Classification Report ---"
+            cat metrics/classification_report.txt
+          fi
+      
+      # -----------------------------------------------------------------------
+      # Step 9: Configure Git for committing
+      # -----------------------------------------------------------------------
+      - name: 🔧 Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+      
+      # -----------------------------------------------------------------------
+      # Step 10: Commit and push changes
+      # -----------------------------------------------------------------------
+      - name: 💾 Commit and Push Changes
+        run: |
+          # Add generated files
+          git add models/ || true
+          git add metrics/ || true
+          git add timestamp.txt || true
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🤖 Auto-update: Iris model training - ${{ steps.timestamp.outputs.TIMESTAMP }}"
+            git push
+            echo "✅ Changes committed and pushed successfully!"
+          fi
+      
+      # -----------------------------------------------------------------------
+      # Step 11: Create GitHub Actions job summary
+      # -----------------------------------------------------------------------
+      - name: 📝 Create Job Summary
+        run: |
+          echo "## 🌸 Iris Model Training Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** ${{ steps.timestamp.outputs.TIMESTAMP }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📊 Model Metrics" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`json" >> $GITHUB_STEP_SUMMARY
+          cat metrics/metrics_latest.json >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Artifacts Saved" >> $GITHUB_STEP_SUMMARY
+          echo "- Model: \`models/iris_rf_model_latest.joblib\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Metrics: \`metrics/metrics_latest.json\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Report: \`metrics/classification_report.txt\`" >> $GITHUB_STEP_SUMMARY

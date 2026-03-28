@@ -1,0 +1,145 @@
+# =============================================================================
+# GitHub Actions Workflow: Iris Model Calibration
+# =============================================================================
+#
+# This workflow calibrates the trained model's predicted probabilities
+# to ensure reliable and well-calibrated predictions.
+#
+# Triggers: After the training workflow completes successfully
+#
+# Author: Kapish Gupta
+# Course: IE 7374 - MLOps, Northeastern University
+# =============================================================================
+
+name: Iris Model Calibration
+
+# Workflow triggers
+on:
+  # Trigger after training workflow completes
+  workflow_run:
+    workflows: ["Iris Model Training and Evaluation"]
+    types:
+      - completed
+  
+  # Allow manual triggering
+  workflow_dispatch:
+
+jobs:
+  calibrate:
+    name: Calibrate Iris Model
+    # Only run if training succeeded (or manual trigger)
+    if: ${{ github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+    
+    steps:
+      # -----------------------------------------------------------------------
+      # Step 1: Checkout repository
+      # -----------------------------------------------------------------------
+      - name: 📥 Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          ref: main
+      
+      # -----------------------------------------------------------------------
+      # Step 2: Pull latest changes (includes model from training)
+      # -----------------------------------------------------------------------
+      - name: 🔄 Pull Latest Changes
+        run: |
+          git pull origin main
+          echo "Pulled latest changes"
+      
+      # -----------------------------------------------------------------------
+      # Step 3: Set up Python
+      # -----------------------------------------------------------------------
+      - name: 🐍 Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+      
+      # -----------------------------------------------------------------------
+      # Step 4: Install dependencies
+      # -----------------------------------------------------------------------
+      - name: 📦 Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      # -----------------------------------------------------------------------
+      # Step 5: Generate timestamp
+      # -----------------------------------------------------------------------
+      - name: ⏰ Generate Timestamp
+        id: timestamp
+        run: |
+          TIMESTAMP=$(date +'%Y%m%d_%H%M%S')
+          echo "TIMESTAMP=$TIMESTAMP" >> $GITHUB_OUTPUT
+          echo "Generated timestamp: $TIMESTAMP"
+      
+      # -----------------------------------------------------------------------
+      # Step 6: Check for trained model
+      # -----------------------------------------------------------------------
+      - name: 🔍 Check for Trained Model
+        run: |
+          echo "Checking for trained model..."
+          if [ ! -f models/iris_rf_model_latest.joblib ]; then
+            echo "❌ Error: No trained model found!"
+            echo "Please run the training workflow first."
+            exit 1
+          fi
+          echo "✅ Found trained model"
+          echo "Models directory contents:"
+          ls -la models/
+      
+      # -----------------------------------------------------------------------
+      # Step 7: Calibrate model
+      # -----------------------------------------------------------------------
+      - name: 🎯 Calibrate Model Probabilities
+        run: |
+          echo "=============================================="
+          echo "Starting Model Calibration..."
+          echo "=============================================="
+          python src/calibrate_model.py
+      
+      # -----------------------------------------------------------------------
+      # Step 8: Configure Git
+      # -----------------------------------------------------------------------
+      - name: 🔧 Configure Git
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+      
+      # -----------------------------------------------------------------------
+      # Step 9: Commit calibrated model
+      # -----------------------------------------------------------------------
+      - name: 💾 Commit and Push Calibrated Model
+        run: |
+          git add models/ || true
+          
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            git commit -m "🔧 Auto-update: Calibrated Iris model - ${{ steps.timestamp.outputs.TIMESTAMP }}"
+            git push
+            echo "✅ Calibrated model committed and pushed!"
+          fi
+      
+      # -----------------------------------------------------------------------
+      # Step 10: Create job summary
+      # -----------------------------------------------------------------------
+      - name: 📝 Create Job Summary
+        run: |
+          echo "## 🔧 Iris Model Calibration Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** ${{ steps.timestamp.outputs.TIMESTAMP }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 📁 Calibrated Models" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          ls -la models/*calibrated* 2>/dev/null || echo "Listing calibrated models..."
+          echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ✅ Calibration Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Calibration method: Platt Scaling (Sigmoid)" >> $GITHUB_STEP_SUMMARY
+          echo "- Calibrated model: \`models/iris_rf_calibrated_latest.joblib\`" >> $GITHUB_STEP_SUMMARY

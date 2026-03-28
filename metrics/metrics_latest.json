@@ -1,0 +1,33 @@
+{
+    "timestamp": "20260328_173808",
+    "dataset": "Iris",
+    "model": "RandomForestClassifier",
+    "modification": "Using Iris dataset instead of synthetic data",
+    "accuracy": 0.9333,
+    "f1_score_weighted": 0.9333,
+    "f1_score_macro": 0.9333,
+    "precision_weighted": 0.9333,
+    "recall_weighted": 0.9333,
+    "confusion_matrix": [
+        [
+            10,
+            0,
+            0
+        ],
+        [
+            0,
+            9,
+            1
+        ],
+        [
+            0,
+            1,
+            9
+        ]
+    ],
+    "class_names": [
+        "setosa",
+        "versicolor",
+        "virginica"
+    ]
+}

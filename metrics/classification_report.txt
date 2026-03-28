@@ -1,0 +1,38 @@
+============================================================
+IRIS CLASSIFICATION - MODEL EVALUATION REPORT
+============================================================
+
+Timestamp: 20260328_173808
+Dataset: Iris (3-class flower classification)
+Model: Random Forest Classifier
+Modification: Using Iris dataset instead of synthetic data
+
+----------------------------------------
+METRICS SUMMARY
+----------------------------------------
+Accuracy:            0.9333
+F1 Score (weighted): 0.9333
+F1 Score (macro):    0.9333
+Precision:           0.9333
+Recall:              0.9333
+
+----------------------------------------
+CLASSIFICATION REPORT
+----------------------------------------
+              precision    recall  f1-score   support
+
+      setosa       1.00      1.00      1.00        10
+  versicolor       0.90      0.90      0.90        10
+   virginica       0.90      0.90      0.90        10
+
+    accuracy                           0.93        30
+   macro avg       0.93      0.93      0.93        30
+weighted avg       0.93      0.93      0.93        30
+
+----------------------------------------
+CONFUSION MATRIX
+----------------------------------------
+Classes: ['setosa', 'versicolor', 'virginica']
+[[10  0  0]
+ [ 0  9  1]
+ [ 0  1  9]]
